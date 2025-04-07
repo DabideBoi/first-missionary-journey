@@ -1,292 +1,162 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Get DOM elements
-    const slides = document.querySelectorAll('.slide');
+    // Variables
+    const slidesContainer = document.getElementById('slides-container');
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const progressBar = document.getElementById('progress-bar');
-    
-    // Set initial state
     let currentSlideIndex = 0;
-    const totalSlides = slides.length;
-    
-    // Initialize progress bar
-    updateProgressBar();
-    
-    // Event listeners for navigation buttons
+    let totalSlides = 0;
+    let slides = [];
+    let mapInitialized = false;
+    let map;
+
+    // Load all slides
+    loadSlides();
+
+    // Event listeners
     prevBtn.addEventListener('click', showPreviousSlide);
     nextBtn.addEventListener('click', showNextSlide);
-    
-    // Keyboard navigation
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
-            showNextSlide();
-        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-            showPreviousSlide();
-        } else if (e.key === 'Home') {
-            goToSlide(0);
-        } else if (e.key === 'End') {
-            goToSlide(totalSlides - 1);
-        }
-    });
-    
-    // Swipe navigation for touch devices
-    let touchStartX = 0;
-    let touchEndX = 0;
-    
-    document.addEventListener('touchstart', function(e) {
-        touchStartX = e.changedTouches[0].screenX;
-    });
-    
-    document.addEventListener('touchend', function(e) {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-    });
-    
-    function handleSwipe() {
-        const swipeThreshold = 50;
-        if (touchEndX < touchStartX - swipeThreshold) {
-            // Swipe left, go to next slide
-            showNextSlide();
-        } else if (touchEndX > touchStartX + swipeThreshold) {
-            // Swipe right, go to previous slide
-            showPreviousSlide();
+    document.addEventListener('keydown', handleKeyPress);
+
+    // Functions
+    async function loadSlides() {
+        try {
+            // Load slides from 1 to 19
+            for (let i = 1; i <= 19; i++) {
+                const response = await fetch(`slides/slide${i}.html`);
+                const slideContent = await response.text();
+                slidesContainer.innerHTML += slideContent;
+            }
+
+            // Initialize slides after loading
+            slides = document.querySelectorAll('.slide');
+            totalSlides = slides.length;
+            
+            // Set first slide as active
+            slides[0].classList.add('active');
+            
+            // Update progress bar
+            updateProgressBar();
+            
+            // Add event listeners to location links
+            setupLocationLinks();
+        } catch (error) {
+            console.error('Error loading slides:', error);
         }
     }
-    
-    // Navigation functions
-    function showNextSlide() {
-        if (currentSlideIndex < totalSlides - 1) {
-            goToSlide(currentSlideIndex + 1);
-        } else {
-            // Optional: loop back to first slide
-            animateButtonShake(nextBtn);
-        }
-    }
-    
-    function showPreviousSlide() {
-        if (currentSlideIndex > 0) {
-            goToSlide(currentSlideIndex - 1);
-        } else {
-            // Optional: loop to last slide
-            animateButtonShake(prevBtn);
-        }
-    }
-    
-    function goToSlide(index) {
-        // Remove active class from current slide
-        slides[currentSlideIndex].classList.remove('active');
+
+    function showSlide(index) {
+        // Hide all slides
+        slides.forEach(slide => slide.classList.remove('active'));
         
-        // Update current slide index
-        currentSlideIndex = index;
-        
-        // Add active class to new current slide
-        slides[currentSlideIndex].classList.add('active');
+        // Show the selected slide
+        slides[index].classList.add('active');
         
         // Update progress bar
         updateProgressBar();
-        
-        // Update button states
-        updateButtonStates();
-        
-        // Animate entrance of new slide
-        animateSlideEntrance();
     }
-    
+
+    function showPreviousSlide() {
+        if (currentSlideIndex > 0) {
+            currentSlideIndex--;
+            showSlide(currentSlideIndex);
+        }
+    }
+
+    function showNextSlide() {
+        if (currentSlideIndex < totalSlides - 1) {
+            currentSlideIndex++;
+            showSlide(currentSlideIndex);
+        }
+    }
+
     function updateProgressBar() {
-        const progressPercentage = ((currentSlideIndex + 1) / totalSlides) * 100;
-        progressBar.style.width = progressPercentage + '%';
+        const progress = ((currentSlideIndex + 1) / totalSlides) * 100;
+        progressBar.style.width = `${progress}%`;
     }
-    
-    function updateButtonStates() {
-        // Optional: Disable prev button on first slide
-        prevBtn.classList.toggle('disabled', currentSlideIndex === 0);
-        
-        // Optional: Disable next button on last slide
-        nextBtn.classList.toggle('disabled', currentSlideIndex === totalSlides - 1);
-    }
-    
-    function animateButtonShake(button) {
-        button.classList.add('shake');
-        setTimeout(() => {
-            button.classList.remove('shake');
-        }, 500);
-    }
-    
-    function animateSlideEntrance() {
-        const currentSlide = slides[currentSlideIndex];
-        currentSlide.style.animation = 'none';
-        setTimeout(() => {
-            currentSlide.style.animation = 'fadeIn 0.5s ease-in-out';
-        }, 10);
-    }
-    
-    // Add CSS for animations
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            50% { transform: translateX(5px); }
-            75% { transform: translateX(-5px); }
-        }
-        
-        .shake {
-            animation: shake 0.5s ease-in-out;
-        }
-        
-        .disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-    `;
-    document.head.appendChild(style);
-    
-    // Initialize button states
-    updateButtonStates();
-    
-    // Add slide counter
-    const controls = document.querySelector('.controls');
-    const slideCounter = document.createElement('div');
-    slideCounter.className = 'slide-counter';
-    slideCounter.innerHTML = `<span id="current-slide">1</span>/<span id="total-slides">${totalSlides}</span>`;
-    slideCounter.style.margin = '0 15px';
-    slideCounter.style.fontSize = '0.9rem';
-    slideCounter.style.color = 'var(--primary-color)';
-    controls.appendChild(slideCounter);
-    
-    const currentSlideElement = document.getElementById('current-slide');
-    
-    // Update slide counter when changing slides
-    function updateSlideCounter() {
-        currentSlideElement.textContent = currentSlideIndex + 1;
-    }
-    
-    // Override goToSlide to update counter
-    const originalGoToSlide = goToSlide;
-    goToSlide = function(index) {
-        originalGoToSlide(index);
-        updateSlideCounter();
-    };
-    
-    // Initialize slide counter
-    updateSlideCounter();
-    
-    // Add fullscreen toggle
-    const fullscreenBtn = document.createElement('button');
-    fullscreenBtn.className = 'nav-btn fullscreen-btn';
-    fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
-    fullscreenBtn.style.marginLeft = '10px';
-    controls.appendChild(fullscreenBtn);
-    
-    fullscreenBtn.addEventListener('click', toggleFullscreen);
-    
-    function toggleFullscreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.error(`Error attempting to enable fullscreen: ${err.message}`);
-            });
-            fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-                fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
-            }
+
+    function handleKeyPress(e) {
+        if (e.key === 'ArrowLeft') {
+            showPreviousSlide();
+        } else if (e.key === 'ArrowRight') {
+            showNextSlide();
         }
     }
-    
-    // Listen for fullscreen change
-    document.addEventListener('fullscreenchange', function() {
-        if (document.fullscreenElement) {
-            fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
-        } else {
-            fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
-        }
-    });
-    
-    // Add automatic slide transition (optional, commented out by default)
-    /*
-    let autoSlideInterval;
-    const autoSlideDelay = 5000; // 5 seconds
-    
-    function startAutoSlide() {
-        autoSlideInterval = setInterval(() => {
-            if (currentSlideIndex < totalSlides - 1) {
-                showNextSlide();
-            } else {
-                goToSlide(0); // Loop back to first slide
-            }
-        }, autoSlideDelay);
-    }
-    
-    function stopAutoSlide() {
-        clearInterval(autoSlideInterval);
-    }
-    
-    // Toggle auto-slide with 'A' key
-    document.addEventListener('keydown', function(e) {
-        if (e.key.toLowerCase() === 'a') {
-            if (autoSlideInterval) {
-                stopAutoSlide();
-                autoSlideInterval = null;
-            } else {
-                startAutoSlide();
-            }
-        }
-    });
-    */
-    
-    // Add slide transition effects
-    slides.forEach(slide => {
-        // Use a flag to ensure animations only happen once per slide activation
-        let animatedElements = new WeakSet();
-        
-        slide.addEventListener('transitionend', function() {
-            if (this.classList.contains('active')) {
-                // Animate elements within the slide
-                const elements = this.querySelectorAll('p, ul, ol, .two-column, .theology-item, .timeline-item');
+
+    function setupLocationLinks() {
+        const locationLinks = document.querySelectorAll('.location-link');
+        locationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const location = this.getAttribute('data-location');
                 
-                // Skip headings to prevent shaking
-                // Only animate elements that haven't been animated yet for this slide activation
-                elements.forEach((element, index) => {
-                    if (!animatedElements.has(element)) {
-                        element.style.opacity = '0';
-                        element.style.transform = 'translateY(20px)';
-                        element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                        element.style.transitionDelay = `${index * 0.1}s`;
-                        
-                        setTimeout(() => {
-                            element.style.opacity = '1';
-                            element.style.transform = 'translateY(0)';
-                            // Mark this element as animated
-                            animatedElements.add(element);
-                        }, 50);
-                    }
+                // Navigate to the map slide (slide 4)
+                currentSlideIndex = 3;
+                showSlide(currentSlideIndex);
+                
+                // Wait a bit for the slide to be visible before showing the location
+                setTimeout(() => {
+                    showLocationOnMap(location);
+                }, 500);
+            });
+        });
+    }
+
+    // Google Maps integration
+    function initMap() {
+        const mapElement = document.getElementById('journey-map');
+        if (!mapElement) {
+            console.error('Map element not found');
+            return;
+        }
+        
+        // Create a map centered on the Mediterranean region
+        map = new google.maps.Map(mapElement, {
+            center: { lat: 36.0, lng: 33.0 },
+            zoom: 6,
+            mapTypeId: 'terrain'
+        });
+        
+        mapInitialized = true;
+    }
+
+    function showLocationOnMap(location) {
+        // Make sure we're on a slide with the map
+        const mapElement = document.getElementById('journey-map');
+        if (!mapElement) {
+            console.error('Map element not found');
+            return;
+        }
+        
+        if (!mapInitialized) {
+            initMap();
+        }
+
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ 'address': location }, function(results, status) {
+            if (status === 'OK') {
+                map.setCenter(results[0].geometry.location);
+                const marker = new google.maps.Marker({
+                    map: map,
+                    position: results[0].geometry.location,
+                    title: location
                 });
+                
+                // Open info window with location name
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<div><strong>${location}</strong></div>`
+                });
+                
+                infoWindow.open(map, marker);
             } else {
-                // Reset the animation tracking when slide is no longer active
-                animatedElements = new WeakSet();
+                console.error('Geocode was not successful for the following reason: ' + status);
             }
         });
-    });
-    
-    // Initialize first slide animations - only for non-heading elements
-    setTimeout(() => {
-        const firstSlideElements = slides[0].querySelectorAll('p, .decorative-line');
-        firstSlideElements.forEach((element, index) => {
-            element.style.opacity = '0';
-            element.style.transform = 'translateY(20px)';
-            element.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
-            element.style.transitionDelay = `${index * 0.2}s`;
-            
-            setTimeout(() => {
-                element.style.opacity = '1';
-                element.style.transform = 'translateY(0)';
-            }, 100);
-        });
-    }, 300);
+    }
+
+    // Initialize Google Maps when needed
+    window.initMap = function() {
+        // We'll initialize the map when a location link is clicked
+        console.log('Google Maps API loaded');
+    };
 });
