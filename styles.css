@@ -311,18 +311,6 @@ blockquote:after {
 #journey-map {
     width: 100%;
     height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    color: var(--primary-color);
-}
-
-#journey-map i {
-    font-size: 4rem;
-    margin-bottom: 10px;
-    color: var(--secondary-color);
 }
 
 .route-list {

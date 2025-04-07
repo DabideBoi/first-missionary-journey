@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let slides = [];
     let mapInitialized = false;
     let map;
+    let markers = [];
 
     // Load all slides
     loadSlides();
@@ -54,6 +55,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update progress bar
         updateProgressBar();
+        
+        // Initialize map if we're on the map slide
+        if (index === 3 && !mapInitialized) {
+            setTimeout(initMap, 100);
+        }
     }
 
     function showPreviousSlide() {
@@ -102,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Google Maps integration
+    // Leaflet Map integration
     function initMap() {
         const mapElement = document.getElementById('journey-map');
         if (!mapElement) {
@@ -111,13 +117,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Create a map centered on the Mediterranean region
-        map = new google.maps.Map(mapElement, {
-            center: { lat: 36.0, lng: 33.0 },
-            zoom: 6,
-            mapTypeId: 'terrain'
-        });
+        map = L.map('journey-map').setView([36.0, 33.0], 6);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
         
         mapInitialized = true;
+        
+        // Add journey route points
+        addJourneyPoints();
+    }
+    
+    function addJourneyPoints() {
+        const journeyPoints = [
+            { name: "Antioch, Syria", coords: [36.2021, 36.1511] },
+            { name: "Seleucia, Turkey", coords: [36.1156, 35.9391] },
+            { name: "Salamis, Cyprus", coords: [35.1856, 33.9000] },
+            { name: "Paphos, Cyprus", coords: [34.7564, 32.4087] },
+            { name: "Perga, Turkey", coords: [36.9598, 30.8540] },
+            { name: "Antioch in Pisidia, Turkey", coords: [38.3019, 31.1891] },
+            { name: "Konya, Turkey", coords: [37.8747, 32.4932] },
+            { name: "Lystra, Turkey", coords: [37.5856, 32.3406] },
+            { name: "Derbe, Turkey", coords: [37.3575, 33.2564] },
+            { name: "Antalya, Turkey", coords: [36.8969, 30.7133] }
+        ];
+        
+        // Create a polyline for the journey route
+        const routePoints = journeyPoints.map(point => point.coords);
+        const polyline = L.polyline(routePoints, {color: 'red', weight: 3}).addTo(map);
+        
+        // Add markers for each point
+        journeyPoints.forEach(point => {
+            const marker = L.marker(point.coords)
+                .addTo(map)
+                .bindPopup(`<strong>${point.name}</strong>`);
+            markers.push(marker);
+        });
+        
+        // Fit the map to show all points
+        map.fitBounds(polyline.getBounds());
     }
 
     function showLocationOnMap(location) {
@@ -132,31 +172,20 @@ document.addEventListener('DOMContentLoaded', function() {
             initMap();
         }
 
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ 'address': location }, function(results, status) {
-            if (status === 'OK') {
-                map.setCenter(results[0].geometry.location);
-                const marker = new google.maps.Marker({
-                    map: map,
-                    position: results[0].geometry.location,
-                    title: location
-                });
-                
-                // Open info window with location name
-                const infoWindow = new google.maps.InfoWindow({
-                    content: `<div><strong>${location}</strong></div>`
-                });
-                
-                infoWindow.open(map, marker);
-            } else {
-                console.error('Geocode was not successful for the following reason: ' + status);
-            }
-        });
+        // Find the marker for this location
+        const marker = markers.find(m => m.getPopup().getContent().includes(location));
+        
+        if (marker) {
+            // Open the popup and center the map on this location
+            marker.openPopup();
+            map.setView(marker.getLatLng(), 10);
+        } else {
+            // If we don't have a pre-defined marker, try to geocode the location
+            // This is a simplified approach since we don't have a geocoding service
+            console.log(`Location not pre-defined: ${location}`);
+            
+            // For demonstration, we'll just center on the Mediterranean
+            map.setView([36.0, 33.0], 6);
+        }
     }
-
-    // Initialize Google Maps when needed
-    window.initMap = function() {
-        // We'll initialize the map when a location link is clicked
-        console.log('Google Maps API loaded');
-    };
 });
